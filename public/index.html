@@ -1,0 +1,735 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Шлагбаум Удельная — живой режим</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #1f2937 0, #020617 60%);
+      color: #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 960px;
+      background: rgba(15, 23, 42, 0.92);
+      border-radius: 18px;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      padding: 20px 24px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .title-block h1 {
+      font-size: 20px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .title-pill {
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(34, 197, 94, 0.14);
+      border: 1px solid rgba(34, 197, 94, 0.5);
+      color: #bbf7d0;
+    }
+
+    .title-block p {
+      margin-top: 4px;
+      font-size: 13px;
+      color: #9ca3af;
+    }
+
+    .clock {
+      font-size: 13px;
+      text-align: right;
+      color: #9ca3af;
+    }
+
+    .clock span {
+      font-weight: 600;
+      color: #e5e7eb;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+      gap: 16px;
+      margin-top: 4px;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .card {
+      background: radial-gradient(circle at top left, rgba(148, 163, 184, 0.16), rgba(15, 23, 42, 0.95));
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      padding: 14px 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-subtitle {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-bottom: 10px;
+    }
+
+    .status-short {
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .status-detailed {
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .status-detailed.success {
+      color: #bbf7d0;
+    }
+
+    .status-detailed.danger {
+      color: #fecaca;
+    }
+
+    .status-hint {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+
+    .countdown-block {
+      margin-top: 12px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px dashed rgba(148, 163, 184, 0.5);
+      font-size: 12px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .countdown-label {
+      color: #9ca3af;
+    }
+
+    .countdown-value {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .countdown-time {
+      font-size: 12px;
+      color: #e5e7eb;
+    }
+
+    /* Шлагбаум */
+    .barrier-scene {
+      margin-top: 14px;
+      position: relative;
+      height: 370px;
+      border-radius: 14px;
+      overflow: hidden;
+      background: linear-gradient(to bottom, rgba(15, 23, 42, 0.7), #020617);
+      border: 1px solid rgba(31, 41, 55, 0.9);
+    }
+
+    .rail-line {
+      position: absolute;
+      left: -20%;
+      right: -20%;
+      top: 58%;
+      height: 4px;
+      background: repeating-linear-gradient(
+        90deg,
+        #6b7280,
+        #6b7280 12px,
+        #4b5563 12px,
+        #4b5563 24px
+      );
+      opacity: 0.8;
+    }
+
+    .road-line {
+      position: absolute;
+      left: -10%;
+      right: -10%;
+      top: 70%;
+      height: 40px;
+      background: radial-gradient(circle at top, #0f172a 0, #020617 50%);
+      border-top: 1px solid rgba(55, 65, 81, 0.9);
+    }
+
+    .road-mark {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      top: 74%;
+      width: 22px;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(249, 250, 251, 0.8);
+      box-shadow: 0 0 12px rgba(248, 250, 252, 0.5);
+    }
+
+    .barrier-base {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      top: 60%;
+      width: 20px;
+      height: 40px;
+      background: radial-gradient(circle at top, #6b7280 0, #111827 70%);
+      border-radius: 10px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .barrier-base::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 30%, #22c55e 0, #14532d 60%);
+      box-shadow: 0 0 12px rgba(34, 197, 94, 0.7);
+    }
+
+    .barrier-base.closed::before {
+      background: radial-gradient(circle at 30% 30%, #ef4444 0, #7f1d1d 60%);
+      box-shadow: 0 0 12px rgba(248, 113, 113, 0.9);
+    }
+
+    .barrier-arm-wrapper {
+      position: absolute;
+      left: 50%;
+      transform-origin: left center;
+      transform: translateX(-50%) rotate(90deg);
+      top: 0;
+      height: 16px;
+      width: 220px;
+      pointer-events: none;
+      transition: transform 0.7s cubic-bezier(0.45, 0, 0.55, 1);
+    }
+
+    .barrier-arm {
+      width: 100%;
+      height: 100%;
+      border-radius: 999px;
+      background: repeating-linear-gradient(
+        90deg,
+        #f9fafb,
+        #f9fafb 20px,
+        #ef4444 20px,
+        #ef4444 40px
+      );
+      box-shadow:
+        0 4px 8px rgba(0, 0, 0, 0.5),
+        0 0 18px rgba(248, 113, 113, 0.7);
+    }
+
+    .barrier-lights {
+      position: absolute;
+      left: calc(50% + 80px);
+      top: 45%;
+      display: flex;
+      gap: 6px;
+    }
+
+    .barrier-light {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      border: 2px solid #111827;
+      box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.9);
+      background: radial-gradient(circle at 30% 30%, #fecaca 0, #7f1d1d 60%);
+      opacity: 0.25;
+    }
+
+    .barrier-closed .barrier-arm-wrapper {
+      transform: translateX(-50%) rotate(-0deg);
+    }
+
+    .barrier-closed .barrier-base {
+      box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.6), 0 8px 16px rgba(248, 113, 113, 0.3);
+    }
+
+    .barrier-closed .barrier-light {
+      opacity: 1;
+      animation: blink 0.7s infinite alternate;
+    }
+
+    @keyframes blink {
+      0% {
+        opacity: 0.2;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+
+    .error-box {
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-size: 12px;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(248, 113, 113, 0.6);
+      color: #fecaca;
+      display: none;
+    }
+
+    .schedule-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 340px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .train-card {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr) 110px;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      font-size: 12px;
+      align-items: center;
+    }
+
+    @media (max-width: 640px) {
+      .train-card {
+        grid-template-columns: 60px minmax(0, 1fr);
+        grid-template-rows: auto auto;
+      }
+    }
+
+    .train-time-main {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .train-time-badge {
+      font-size: 10px;
+      color: #9ca3af;
+    }
+
+    .train-title {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+
+    .train-sub {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+
+    .train-meta {
+      text-align: right;
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      justify-content: center;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(55, 65, 81, 0.8);
+      font-size: 10px;
+      color: #e5e7eb;
+    }
+
+    .chip.green {
+      background: rgba(22, 163, 74, 0.3);
+      color: #bbf7d0;
+    }
+
+    .chip.red {
+      background: rgba(239, 68, 68, 0.3);
+      color: #fecaca;
+    }
+
+    .empty-state {
+      font-size: 12px;
+      color: #9ca3af;
+      padding: 12px 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="title-block">
+        <h1>
+          Шлагбаум · Удельная
+          <span class="title-pill">live</span>
+        </h1>
+        <p>Статус переезда и ближайшие поезда по данным Яндекс.Расписаний.</p>
+      </div>
+      <div class="clock">
+        Сейчас: <span id="currentTimeText">--:--</span><br />
+        Время станции: Мск (UTC+3)
+      </div>
+    </header>
+
+    <main class="layout">
+      <!-- Левая часть: статус и шлагбаум -->
+      <section class="card">
+        <div class="card-title">
+          <span>Состояние переезда</span>
+        </div>
+        <div class="card-subtitle">
+          Рассчётное закрытие: от 3 мин до прибытия и до 2 мин после.
+        </div>
+
+        <div class="status-block">
+          <div class="status-short" id="statusTextShort">Статус: нет данных</div>
+          <div class="status-detailed" id="statusDetailed">
+            Расписание ещё не загружено
+          </div>
+          <div class="status-hint" id="statusHint">
+            Как только сервер ответит, здесь появится оценка статуса шлагбаума.
+          </div>
+        </div>
+
+        <div class="countdown-block">
+          <div class="countdown-label">До изменения состояния:</div>
+          <div class="countdown-value" id="nextClosureCountdown">—</div>
+          <div class="countdown-time" id="nextClosureTime">Нет данных</div>
+        </div>
+
+        <div class="barrier-scene" id="barrier">
+          <div class="rail-line"></div>
+          <div class="road-line"></div>
+          <div class="road-mark"></div>
+
+          <div class="barrier-base" id="barrierBase"></div>
+
+          <div class="barrier-arm-wrapper">
+            <div class="barrier-arm"></div>
+          </div>
+
+          <div class="barrier-lights">
+            <div class="barrier-light"></div>
+            <div class="barrier-light"></div>
+          </div>
+        </div>
+
+        <div class="error-box" id="errorBox"></div>
+      </section>
+
+      <!-- Правая часть: список поездов -->
+      <section class="card">
+        <div class="card-title">
+          <span>Сегодняшние поезда</span>
+        </div>
+        <div class="card-subtitle">
+          Здесь показываются поезда, из‑за которых может закрываться шлагбаум.
+        </div>
+        <div class="schedule-list" id="scheduleList">
+          <div class="empty-state">
+            Ожидаем данные от сервера…
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      const CLOSED_BEFORE_MIN = 3;
+      const CLOSED_AFTER_MIN = 2;
+
+      const barrier = document.getElementById('barrier');
+      const barrierBase = document.getElementById('barrierBase');
+      const statusTextShort = document.getElementById('statusTextShort');
+      const statusDetailed = document.getElementById('statusDetailed');
+      const statusHint = document.getElementById('statusHint');
+      const nextClosureCountdown = document.getElementById('nextClosureCountdown');
+      const nextClosureTime = document.getElementById('nextClosureTime');
+      const currentTimeText = document.getElementById('currentTimeText');
+      const scheduleListEl = document.getElementById('scheduleList');
+      const errorBox = document.getElementById('errorBox');
+
+      let intervals = [];
+
+      function formatTime(d) {
+        if (!(d instanceof Date) || isNaN(d)) return '—';
+        const hh = String(d.getHours()).padStart(2, '0');
+        const mm = String(d.getMinutes()).padStart(2, '0');
+        return `${hh}:${mm}`;
+      }
+
+      function formatCountdown(ms) {
+        if (ms <= 0) return 'менее 1 мин';
+        const totalSec = Math.floor(ms / 1000);
+        const minutes = Math.floor(totalSec / 60);
+        const seconds = totalSec % 60;
+        if (minutes === 0) return `${seconds} с`;
+        return `${minutes} мин ${String(seconds).padStart(2, '0')} с`;
+      }
+
+      function findCurrentAndNext(now = new Date()) {
+        intervals.sort((a, b) => a.start - b.start);
+        let current = null;
+        let next = null;
+
+        for (const int of intervals) {
+          if (int.start <= now && now <= int.end) {
+            current = int;
+            break;
+          }
+          if (!current && int.start > now) {
+            next = int;
+            break;
+          }
+        }
+
+        if (!current && !next) {
+          for (const int of intervals) {
+            if (int.start > now) {
+              next = int;
+              break;
+            }
+          }
+        }
+        return { current, next };
+      }
+
+      function updateBarrierAndStatus() {
+        const now = new Date();
+        currentTimeText.textContent = formatTime(now);
+
+        if (!intervals.length) {
+          barrier.classList.remove('barrier-closed');
+          barrierBase.classList.remove('closed');
+          statusTextShort.textContent = 'Статус: нет данных';
+          statusDetailed.textContent = 'Расписание не загружено';
+          statusDetailed.classList.remove('danger', 'success');
+          statusHint.textContent = 'Ждём данные от сервера.';
+          nextClosureCountdown.textContent = '—';
+          nextClosureTime.textContent = 'Нет данных';
+          return;
+        }
+
+        const { current, next } = findCurrentAndNext(now);
+
+        if (!current && !next) {
+          barrier.classList.remove('barrier-closed');
+          barrierBase.classList.remove('closed');
+          statusTextShort.textContent = 'Статус: открыто';
+          statusDetailed.textContent = 'Шлагбаум открыт';
+          statusDetailed.classList.remove('danger');
+          statusDetailed.classList.add('success');
+          statusHint.textContent =
+            'По данным расписания, все сегодняшние поезда уже прошли.';
+          nextClosureCountdown.textContent = '—';
+          nextClosureTime.textContent = 'Все рейсы на сегодня завершены';
+          return;
+        }
+
+        if (current) {
+          barrier.classList.add('barrier-closed');
+          barrierBase.classList.add('closed');
+          statusTextShort.textContent = 'Статус: закрыто';
+          statusDetailed.textContent = 'Шлагбаум закрыт (поезд на переезде)';
+          statusDetailed.classList.remove('success');
+          statusDetailed.classList.add('danger');
+
+          const msLeft = current.end - now;
+          nextClosureCountdown.textContent =
+            'Откроется через ' + formatCountdown(msLeft);
+          nextClosureTime.textContent =
+            'Ожидаемое открытие ≈ ' +
+            formatTime(current.end) +
+            ' (поезд ' +
+            (current.number || '—') +
+            ')';
+          statusHint.textContent =
+            'По данным расписания, поезд прибыл в ' +
+            formatTime(current.arrival) +
+            `. Модель интервала: −${CLOSED_BEFORE_MIN} / +${CLOSED_AFTER_MIN} мин.`;
+        } else if (next) {
+          barrier.classList.remove('barrier-closed');
+          barrierBase.classList.remove('closed');
+          statusTextShort.textContent = 'Статус: открыто';
+          statusDetailed.textContent = 'Шлагбаум открыт';
+          statusDetailed.classList.remove('danger');
+          statusDetailed.classList.add('success');
+
+          const msLeft = next.start - now;
+          nextClosureCountdown.textContent =
+            'Закроется через ' + formatCountdown(msLeft);
+          nextClosureTime.textContent =
+            'Ожидаемое закрытие ≈ ' +
+            formatTime(next.start) +
+            ', прибытие поезда ' +
+            (next.number || '—') +
+            ' в ' +
+            formatTime(next.arrival);
+          statusHint.textContent =
+            `Интервал закрытия оценочный: ${CLOSED_BEFORE_MIN} мин до прибытия и ` +
+            `${CLOSED_AFTER_MIN} мин после.`;
+        }
+      }
+
+      function renderScheduleList() {
+        if (!intervals.length) {
+          scheduleListEl.innerHTML =
+            '<div class="empty-state">Нет данных расписания. Ожидаем ответ сервера…</div>';
+          return;
+        }
+
+        const now = new Date();
+
+        const html = intervals
+          .map(int => {
+            const isPast = int.end < now;
+            const isNow = int.start <= now && now <= int.end;
+            const isFuture = int.start > now;
+
+            const trackLabel = int.stops || '';
+
+            const statusChip = isNow
+              ? '<span class="chip red">Сейчас закрыто</span>'
+              : isPast
+              ? '<span class="chip">Прошёл</span>'
+              : '<span class="chip green">Ожидается</span>';
+
+            let eta = '';
+            if (isFuture) {
+              const distanceMs = int.start - now;
+              eta = 'через ' + formatCountdown(distanceMs);
+            } else if (isNow) {
+              eta = 'идёт проход поезда';
+            } else {
+              eta = 'уже прошёл';
+            }
+
+            return `
+              <article class="train-card">
+                <div class="train-time">
+                  <div class="train-time-main">${formatTime(int.arrival)}</div>
+                  <div class="train-time-badge">прибытие</div>
+                </div>
+                <div class="train-info">
+                  <div class="train-title">${int.title}</div>
+                  <div class="train-sub">
+                    ${trackLabel || 'Остановки: по маршруту'}
+                  </div>
+                </div>
+                <div class="train-meta">
+                  ${statusChip}
+                  <div>${int.number ? '№ ' + int.number : ''}</div>
+                  <div style="color:#9ca3af;">${eta}</div>
+                </div>
+              </article>
+            `;
+          })
+          .join('');
+
+        scheduleListEl.innerHTML = html;
+      }
+
+      async function loadSchedule() {
+        try {
+          errorBox.style.display = 'none';
+          errorBox.textContent = '';
+          scheduleListEl.innerHTML =
+            '<div class="empty-state">Загружаем расписание по станции «Удельная»…</div>';
+
+          const res = await fetch('/api/closures');
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error('HTTP ' + res.status + ': ' + text.slice(0, 200));
+          }
+
+          const data = await res.json();
+          intervals = (data.intervals || []).map(i => ({
+            start: new Date(i.start),
+            end: new Date(i.end),
+            arrival: new Date(i.arrival),
+            title: i.title || 'Электропоезд',
+            number: i.number || '',
+            stops: i.stops || ''
+          }));
+
+          intervals.sort((a, b) => a.start - b.start);
+
+          renderScheduleList();
+          updateBarrierAndStatus();
+        } catch (err) {
+          console.error('Ошибка загрузки расписания:', err);
+          errorBox.style.display = 'block';
+          errorBox.textContent =
+            'Ошибка загрузки расписания: ' +
+            (err.message || err.toString()) +
+            '. Проверь сервер / интернет.';
+          intervals = [];
+          renderScheduleList();
+          updateBarrierAndStatus();
+        }
+      }
+
+      window.addEventListener('load', () => {
+        loadSchedule();
+        setInterval(loadSchedule, 5 * 60 * 1000);
+        setInterval(() => {
+          updateBarrierAndStatus();
+          renderScheduleList();
+        }, 1000);
+      });
+    })();
+  </script>
+</body>
+</html>
