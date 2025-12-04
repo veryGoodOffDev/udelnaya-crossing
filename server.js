@@ -5,7 +5,7 @@ const path = require('path');
 
 const app = express();
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5501;
 const API_KEY = process.env.YANDEX_RASP_API_KEY;
 
 // Удельная, код Яндекс.Расписаний
