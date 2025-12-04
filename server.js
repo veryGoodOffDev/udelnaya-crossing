@@ -13,8 +13,8 @@ const STATION_CODE = 's9603463';
 const RESULT_TZ = 'Europe/Moscow';
 
 // Модель: на сколько минут до/после прибытия считаем шлагбаум закрытым
-const CLOSED_BEFORE_MIN = 3;
-const CLOSED_AFTER_MIN = 2;
+const CLOSED_BEFORE_MIN = 2;
+const CLOSED_AFTER_MIN = 4;
 
 // Раздаём фронт
 app.use(express.static(path.join(__dirname, 'public')));
