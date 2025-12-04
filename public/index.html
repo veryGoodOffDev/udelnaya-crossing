@@ -129,6 +129,12 @@
       color: #9ca3af;
       margin-bottom: 10px;
     }
+     
+    .card-subtitle span {
+      font-weight: 600;
+      color: #dda245;
+    }
+
 
     .status-short {
       font-size: 13px;
@@ -315,6 +321,12 @@
       animation: blink 0.7s infinite alternate;
     }
 
+    @media (max-width:440px) {
+         .barrier-arm-wrapper {
+      width: 200px;
+    }
+    }
+
     @keyframes blink {
       0% {
         opacity: 0.2;
@@ -344,62 +356,106 @@
       padding-right: 4px;
     }
 
-    .train-card {
-      display: grid;
-      grid-template-columns: 72px minmax(0, 1fr) 110px;
-      gap: 8px;
-      padding: 8px 10px;
-      border-radius: 12px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(55, 65, 81, 0.9);
-      font-size: 12px;
-      align-items: center;
-    }
-
-    .train-card--highlight {
-      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.9),
-                  0 0 24px rgba(56, 189, 248, 0.6);
-      transform: translateY(-1px);
-      transition: box-shadow 0.3s ease, transform 0.3s ease;
+/* Карточка поезда */
+.train-card {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 110px;
+  grid-template-areas: "time info meta";
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(55, 65, 81, 0.9);
+  font-size: 12px;
+  align-items: center;
 }
 
+/* подсветка актуального поезда */
+.train-card--highlight {
+  box-shadow:
+    0 0 0 1px rgba(56, 189, 248, 0.9),
+    0 0 24px rgba(56, 189, 248, 0.6);
+  transform: translateY(-1px);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
 
-    @media (max-width: 640px) {
-      .train-card {
-        grid-template-columns: 60px minmax(0, 1fr);
-        grid-template-rows: auto auto;
-      }
-    }
+/* блоки внутри карточки */
+.train-time {
+  grid-area: time;
+}
 
-    .train-time-main {
-      font-size: 16px;
-      font-weight: 600;
-    }
+.train-info {
+  grid-area: info;
+  min-width: 0; /* чтобы текст адекватно переносился */
+}
 
-    .train-time-badge {
-      font-size: 10px;
-      color: #9ca3af;
-    }
+.train-meta {
+  grid-area: meta;
+  text-align: right;
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  justify-content: center;
+}
 
-    .train-title {
-      font-size: 13px;
-      font-weight: 500;
-      margin-bottom: 2px;
-    }
+.train-eta {
+  text-align: center;
+}
 
-    .train-sub {
-      font-size: 11px;
-      color: #9ca3af;
-    }
+/* текстовые размеры */
+.train-time-main {
+  font-size: 16px;
+  font-weight: 600;
+}
 
-    .train-meta {
-      text-align: right;
-      font-size: 11px;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      justify-content: center;
-    }
+.train-time-badge {
+  font-size: 10px;
+  color: #9ca3af;
+}
+
+.train-title {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.train-sub {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* АДАПТИВ под мобильные */
+@media (max-width: 640px) {
+  .train-card {
+    grid-template-columns: 60px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      "time info"
+      "meta meta";
+    align-items: flex-start;
+  }
+
+  .train-meta {
+    text-align: left;
+    margin-top: 4px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+  }
+
+  .train-meta > div {
+    /* чтобы фразы типа "уже прошёл" не ломались в столбец */
+    white-space: nowrap;
+  }
+
+  .train-meta > div:last-child {
+    /* ETA можно дать занять всю строку */
+    flex-basis: 100%;
+    white-space: normal;
+  }
+}
+
 
     .chip {
       display: inline-flex;
@@ -517,7 +573,7 @@
           <span>Сегодняшние поезда</span>
         </div>
         <div class="card-subtitle">
-          Здесь показываются поезда, из‑за которых может закрываться шлагбаум.
+          Здесь отображаются поезда, из-за которых может закрываться шлагбаум. Вся информация берётся из открытых источников и доступного расписания; <span>закрытия переезда из-за рабочих и грузовых составов здесь не учитываются.</span>
         </div>
         <div class="schedule-list" id="scheduleList">
           <div class="empty-state">
