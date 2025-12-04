@@ -341,6 +341,14 @@
       align-items: center;
     }
 
+    .train-card--highlight {
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.9),
+                  0 0 24px rgba(56, 189, 248, 0.6);
+      transform: translateY(-1px);
+      transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+
     @media (max-width: 640px) {
       .train-card {
         grid-template-columns: 60px minmax(0, 1fr);
@@ -404,6 +412,24 @@
       color: #9ca3af;
       padding: 12px 8px;
     }
+    .best-windows {
+  margin-top: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #111827;
+  font-size: 0.9rem;
+  color: #e5e7eb;
+}
+
+.best-windows-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.best-window-row {
+  margin-top: 2px;
+}
+
   </style>
 </head>
 <body>
@@ -411,7 +437,7 @@
     <header class="app-header">
       <div class="title-block">
         <h1>
-          Шлагбаум · Удельная
+          Переезд · Удельная
           <span class="title-pill">live</span>
         </h1>
         <p>Статус переезда и ближайшие поезда по данным Яндекс.Расписаний.</p>
@@ -429,7 +455,7 @@
           <span>Состояние переезда</span>
         </div>
         <div class="card-subtitle">
-          Рассчётное закрытие: от 3 мин до прибытия и до 2 мин после.
+          Рассчётное закрытие: от 2 мин до прибытия и до 3 мин после отправления.
         </div>
 
         <div class="status-block">
@@ -441,7 +467,9 @@
             Как только сервер ответит, здесь появится оценка статуса шлагбаума.
           </div>
         </div>
-
+        <div id="bestWindows" class="best-windows">
+  
+        </div>
         <div class="countdown-block">
           <div class="countdown-label">До изменения состояния:</div>
           <div class="countdown-value" id="nextClosureCountdown">—</div>
@@ -485,251 +513,453 @@
     </main>
   </div>
 
-  <script>
-    (function () {
-      const CLOSED_BEFORE_MIN = 3;
-      const CLOSED_AFTER_MIN = 2;
+ <script>
+  (function () {
+    const CLOSED_BEFORE_MIN = 3;
+    const CLOSED_AFTER_MIN = 2;
 
-      const barrier = document.getElementById('barrier');
-      const barrierBase = document.getElementById('barrierBase');
-      const statusTextShort = document.getElementById('statusTextShort');
-      const statusDetailed = document.getElementById('statusDetailed');
-      const statusHint = document.getElementById('statusHint');
-      const nextClosureCountdown = document.getElementById('nextClosureCountdown');
-      const nextClosureTime = document.getElementById('nextClosureTime');
-      const currentTimeText = document.getElementById('currentTimeText');
-      const scheduleListEl = document.getElementById('scheduleList');
-      const errorBox = document.getElementById('errorBox');
+    const barrier = document.getElementById('barrier');
+    const barrierBase = document.getElementById('barrierBase');
+    const statusTextShort = document.getElementById('statusTextShort');
+    const statusDetailed = document.getElementById('statusDetailed');
+    const statusHint = document.getElementById('statusHint');
+    const nextClosureCountdown = document.getElementById('nextClosureCountdown');
+    const nextClosureTime = document.getElementById('nextClosureTime');
+    const currentTimeText = document.getElementById('currentTimeText');
+    const scheduleListEl = document.getElementById('scheduleList');
+    const errorBox = document.getElementById('errorBox');
+    const bestWindowsEl = document.getElementById('bestWindows');
 
-      let intervals = [];
+    let intervals = [];
 
-      function formatTime(d) {
-        if (!(d instanceof Date) || isNaN(d)) return '—';
-        const hh = String(d.getHours()).padStart(2, '0');
-        const mm = String(d.getMinutes()).padStart(2, '0');
-        return `${hh}:${mm}`;
+    function formatTime(d) {
+      if (!(d instanceof Date) || isNaN(d)) return '—';
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      return `${hh}:${mm}`;
+    }
+
+function formatCountdown(ms) {
+  if (ms <= 0) return 'менее 1 с';
+
+  const totalSec = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSec / 3600);
+  const minutes = Math.floor((totalSec % 3600) / 60);
+  const seconds = totalSec % 60;
+
+  // меньше минуты — показываем только секунды
+  if (totalSec < 60) {
+    return `${seconds} с`;
+  }
+
+  // меньше часа — минуты и секунды
+  if (hours === 0) {
+    return `${minutes} мин ${String(seconds).padStart(2, '0')} с`;
+  }
+
+  // час и больше — часы, минуты, секунды
+  return `${hours} ч ${String(minutes).padStart(2, '0')} мин ${String(
+    seconds
+  ).padStart(2, '0')} с`;
+}
+function formatDurationShort(ms) {
+  if (ms <= 0) return '0 мин';
+
+  const totalMin = Math.round(ms / 60000);
+  const hours = Math.floor(totalMin / 60);
+  const minutes = totalMin % 60;
+
+  if (hours === 0) {
+    return `${minutes} мин`;
+  }
+  if (minutes === 0) {
+    return `${hours} ч`;
+  }
+  return `${hours} ч ${minutes} мин`;
+}
+
+
+    function findCurrentAndNext(now = new Date()) {
+      intervals.sort((a, b) => a.start - b.start);
+      let current = null;
+      let next = null;
+
+      for (const int of intervals) {
+        if (int.start <= now && now <= int.end) {
+          current = int;
+          break;
+        }
+        if (!current && int.start > now) {
+          next = int;
+          break;
+        }
       }
 
-      function formatCountdown(ms) {
-        if (ms <= 0) return 'менее 1 мин';
-        const totalSec = Math.floor(ms / 1000);
-        const minutes = Math.floor(totalSec / 60);
-        const seconds = totalSec % 60;
-        if (minutes === 0) return `${seconds} с`;
-        return `${minutes} мин ${String(seconds).padStart(2, '0')} с`;
-      }
-
-      function findCurrentAndNext(now = new Date()) {
-        intervals.sort((a, b) => a.start - b.start);
-        let current = null;
-        let next = null;
-
+      if (!current && !next) {
         for (const int of intervals) {
-          if (int.start <= now && now <= int.end) {
-            current = int;
-            break;
-          }
-          if (!current && int.start > now) {
+          if (int.start > now) {
             next = int;
             break;
           }
         }
+      }
+      return { current, next };
+    }
 
-        if (!current && !next) {
-          for (const int of intervals) {
-            if (int.start > now) {
-              next = int;
-              break;
-            }
+    function updateBarrierAndStatus() {
+      const now = new Date();
+      currentTimeText.textContent = formatTime(now);
+
+      if (!intervals.length) {
+        barrier.classList.remove('barrier-closed');
+        barrierBase.classList.remove('closed');
+        statusTextShort.textContent = 'Статус: нет данных';
+        statusDetailed.textContent = 'Расписание не загружено';
+        statusDetailed.classList.remove('danger', 'success');
+        statusHint.textContent = 'Ждём данные от сервера.';
+        nextClosureCountdown.textContent = '—';
+        nextClosureTime.textContent = 'Нет данных';
+        return;
+      }
+
+      const { current, next } = findCurrentAndNext(now);
+
+      if (!current && !next) {
+        barrier.classList.remove('barrier-closed');
+        barrierBase.classList.remove('closed');
+        statusTextShort.textContent = 'Статус: открыто';
+        statusDetailed.textContent = 'Переезд открыт';
+        statusDetailed.classList.remove('danger');
+        statusDetailed.classList.add('success');
+        statusHint.textContent =
+          'По данным расписания, все сегодняшние поезда уже прошли.';
+        nextClosureCountdown.textContent = '—';
+        nextClosureTime.textContent = 'Все рейсы на сегодня завершены';
+        return;
+      }
+
+      if (current) {
+        barrier.classList.add('barrier-closed');
+        barrierBase.classList.add('closed');
+        statusTextShort.textContent = 'Статус: закрыто';
+        statusDetailed.textContent = 'Переезд закрыт (проезд поезда)';
+        statusDetailed.classList.remove('success');
+        statusDetailed.classList.add('danger');
+
+        const msLeft = current.end - now;
+        nextClosureCountdown.textContent =
+          'Откроется через ' + formatCountdown(msLeft);
+        nextClosureTime.textContent =
+          'Ожидаемое открытие ≈ ' +
+          formatTime(current.end) +
+          ' (поезд ' +
+          (current.number || '—') +
+          ')';
+        statusHint.textContent =
+          'По данным расписания, поезд прибыл в ' +
+          formatTime(current.arrival) +
+          `. Модель интервала: −${CLOSED_BEFORE_MIN} / +${CLOSED_AFTER_MIN} мин.`;
+      } else if (next) {
+        barrier.classList.remove('barrier-closed');
+        barrierBase.classList.remove('closed');
+        statusTextShort.textContent = 'Статус: открыто';
+        statusDetailed.textContent = 'Шлагбаум открыт';
+        statusDetailed.classList.remove('danger');
+        statusDetailed.classList.add('success');
+
+        const msLeft = next.start - now;
+        nextClosureCountdown.textContent =
+          'Закроется через ' + formatCountdown(msLeft);
+        nextClosureTime.textContent =
+          'Ожидаемое закрытие ≈ ' +
+          formatTime(next.start) +
+          ', прибытие поезда ' +
+          (next.number || '—') +
+          ' в ' +
+          formatTime(next.arrival);
+        statusHint.textContent =
+          `Интервал закрытия оценочный: ${CLOSED_BEFORE_MIN} мин до прибытия и ` +
+          `${CLOSED_AFTER_MIN} мин после.`;
+      }
+    }
+    function updateBestWindows() {
+  if (!bestWindowsEl) return;
+
+  if (!intervals.length) {
+    bestWindowsEl.innerHTML =
+      '<div class="best-windows-title">Лучшее время для проезда</div>' +
+      '<div>Нет данных расписания.</div>';
+    return;
+  }
+
+  const now = new Date();
+  const sorted = [...intervals].sort((a, b) => a.start - b.start);
+  const windows = [];
+  const MIN_WINDOW_MIN = 5; // не советуем окна короче 5 минут
+  const minWindowMs = MIN_WINDOW_MIN * 60 * 1000;
+
+  // от "сейчас" до конца дня
+  let lastEnd = now;
+
+  for (const int of sorted) {
+    // если этот интервал уже начался до lastEnd — сдвигаем lastEnd до конца этого интервала
+    if (int.start <= lastEnd) {
+      if (int.end > lastEnd) lastEnd = int.end;
+      continue;
+    }
+
+    // между lastEnd и началом следующего закрытия есть "окно"
+    const openStart = lastEnd;
+    const openEnd = int.start;
+
+    const dur = openEnd - openStart;
+    if (dur >= minWindowMs && openEnd > now) {
+      windows.push({ openStart, openEnd, dur });
+    }
+
+    if (int.end > lastEnd) lastEnd = int.end;
+  }
+
+  // окно после последнего поезда до конца дня
+  const dayEnd = new Date(now);
+  dayEnd.setHours(23, 59, 59, 999);
+  if (lastEnd < dayEnd) {
+    const dur = dayEnd - lastEnd;
+    if (dur >= minWindowMs && dayEnd > now) {
+      windows.push({ openStart: lastEnd, openEnd: dayEnd, dur });
+    }
+  }
+
+  if (!windows.length) {
+    bestWindowsEl.innerHTML =
+      '<div class="best-windows-title">Лучшее время для проезда</div>' +
+      '<div>Сегодня больших свободных окон почти не осталось.</div>';
+    return;
+  }
+
+  // сортируем по длительности (самые длинные сверху)
+  windows.sort((a, b) => b.dur - a.dur);
+
+  const top = windows.slice(0, 3); // показываем топ-3
+  const htmlRows = top
+    .map(
+      (w, idx) =>
+        `<div class="best-window-row">
+          ${idx + 1}) с ${formatTime(w.openStart)} до ${formatTime(
+          w.openEnd
+        )} — ${formatDurationShort(w.dur)}
+        </div>`
+    )
+    .join('');
+
+  bestWindowsEl.innerHTML =
+    '<div class="best-windows-title">Лучшее время для проезда</div>' +
+    htmlRows;
+}
+
+    function scrollToRelevantTrain() {
+      if (!intervals.length) return;
+
+      const now = new Date();
+      let targetIndex = -1;
+
+      // 1) текущий интервал (шлагбаум закрыт)
+      for (let i = 0; i < intervals.length; i++) {
+        const int = intervals[i];
+        if (int.start <= now && now <= int.end) {
+          targetIndex = i;
+          break;
+        }
+      }
+
+      // 2) ближайший будущий
+      if (targetIndex === -1) {
+        for (let i = 0; i < intervals.length; i++) {
+          const int = intervals[i];
+          if (int.start > now) {
+            targetIndex = i;
+            break;
           }
         }
-        return { current, next };
       }
 
-      function updateBarrierAndStatus() {
-        const now = new Date();
-        currentTimeText.textContent = formatTime(now);
-
-        if (!intervals.length) {
-          barrier.classList.remove('barrier-closed');
-          barrierBase.classList.remove('closed');
-          statusTextShort.textContent = 'Статус: нет данных';
-          statusDetailed.textContent = 'Расписание не загружено';
-          statusDetailed.classList.remove('danger', 'success');
-          statusHint.textContent = 'Ждём данные от сервера.';
-          nextClosureCountdown.textContent = '—';
-          nextClosureTime.textContent = 'Нет данных';
-          return;
-        }
-
-        const { current, next } = findCurrentAndNext(now);
-
-        if (!current && !next) {
-          barrier.classList.remove('barrier-closed');
-          barrierBase.classList.remove('closed');
-          statusTextShort.textContent = 'Статус: открыто';
-          statusDetailed.textContent = 'Шлагбаум открыт';
-          statusDetailed.classList.remove('danger');
-          statusDetailed.classList.add('success');
-          statusHint.textContent =
-            'По данным расписания, все сегодняшние поезда уже прошли.';
-          nextClosureCountdown.textContent = '—';
-          nextClosureTime.textContent = 'Все рейсы на сегодня завершены';
-          return;
-        }
-
-        if (current) {
-          barrier.classList.add('barrier-closed');
-          barrierBase.classList.add('closed');
-          statusTextShort.textContent = 'Статус: закрыто';
-          statusDetailed.textContent = 'Шлагбаум закрыт (поезд на переезде)';
-          statusDetailed.classList.remove('success');
-          statusDetailed.classList.add('danger');
-
-          const msLeft = current.end - now;
-          nextClosureCountdown.textContent =
-            'Откроется через ' + formatCountdown(msLeft);
-          nextClosureTime.textContent =
-            'Ожидаемое открытие ≈ ' +
-            formatTime(current.end) +
-            ' (поезд ' +
-            (current.number || '—') +
-            ')';
-          statusHint.textContent =
-            'По данным расписания, поезд прибыл в ' +
-            formatTime(current.arrival) +
-            `. Модель интервала: −${CLOSED_BEFORE_MIN} / +${CLOSED_AFTER_MIN} мин.`;
-        } else if (next) {
-          barrier.classList.remove('barrier-closed');
-          barrierBase.classList.remove('closed');
-          statusTextShort.textContent = 'Статус: открыто';
-          statusDetailed.textContent = 'Шлагбаум открыт';
-          statusDetailed.classList.remove('danger');
-          statusDetailed.classList.add('success');
-
-          const msLeft = next.start - now;
-          nextClosureCountdown.textContent =
-            'Закроется через ' + formatCountdown(msLeft);
-          nextClosureTime.textContent =
-            'Ожидаемое закрытие ≈ ' +
-            formatTime(next.start) +
-            ', прибытие поезда ' +
-            (next.number || '—') +
-            ' в ' +
-            formatTime(next.arrival);
-          statusHint.textContent =
-            `Интервал закрытия оценочный: ${CLOSED_BEFORE_MIN} мин до прибытия и ` +
-            `${CLOSED_AFTER_MIN} мин после.`;
-        }
+      // 3) если все в прошлом — к последнему
+      if (targetIndex === -1) {
+        targetIndex = intervals.length - 1;
       }
 
-      function renderScheduleList() {
-        if (!intervals.length) {
-          scheduleListEl.innerHTML =
-            '<div class="empty-state">Нет данных расписания. Ожидаем ответ сервера…</div>';
-          return;
-        }
+      const card = scheduleListEl.querySelector(
+        `.train-card[data-idx="${targetIndex}"]`
+      );
+      if (!card) return;
 
-        const now = new Date();
+      const containerRect = scheduleListEl.getBoundingClientRect();
+      const cardRect = card.getBoundingClientRect();
+      const offset = cardRect.top - containerRect.top;
 
-        const html = intervals
-          .map(int => {
-            const isPast = int.end < now;
-            const isNow = int.start <= now && now <= int.end;
-            const isFuture = int.start > now;
-
-            const trackLabel = int.stops || '';
-
-            const statusChip = isNow
-              ? '<span class="chip red">Сейчас закрыто</span>'
-              : isPast
-              ? '<span class="chip">Прошёл</span>'
-              : '<span class="chip green">Ожидается</span>';
-
-            let eta = '';
-            if (isFuture) {
-              const distanceMs = int.start - now;
-              eta = 'через ' + formatCountdown(distanceMs);
-            } else if (isNow) {
-              eta = 'идёт проход поезда';
-            } else {
-              eta = 'уже прошёл';
-            }
-
-            return `
-              <article class="train-card">
-                <div class="train-time">
-                  <div class="train-time-main">${formatTime(int.arrival)}</div>
-                  <div class="train-time-badge">прибытие</div>
-                </div>
-                <div class="train-info">
-                  <div class="train-title">${int.title}</div>
-                  <div class="train-sub">
-                    ${trackLabel || 'Остановки: по маршруту'}
-                  </div>
-                </div>
-                <div class="train-meta">
-                  ${statusChip}
-                  <div>${int.number ? '№ ' + int.number : ''}</div>
-                  <div style="color:#9ca3af;">${eta}</div>
-                </div>
-              </article>
-            `;
-          })
-          .join('');
-
-        scheduleListEl.innerHTML = html;
-      }
-
-      async function loadSchedule() {
-        try {
-          errorBox.style.display = 'none';
-          errorBox.textContent = '';
-          scheduleListEl.innerHTML =
-            '<div class="empty-state">Загружаем расписание по станции «Удельная»…</div>';
-
-          const res = await fetch('/api/closures');
-          if (!res.ok) {
-            const text = await res.text();
-            throw new Error('HTTP ' + res.status + ': ' + text.slice(0, 200));
-          }
-
-          const data = await res.json();
-          intervals = (data.intervals || []).map(i => ({
-            start: new Date(i.start),
-            end: new Date(i.end),
-            arrival: new Date(i.arrival),
-            title: i.title || 'Электропоезд',
-            number: i.number || '',
-            stops: i.stops || ''
-          }));
-
-          intervals.sort((a, b) => a.start - b.start);
-
-          renderScheduleList();
-          updateBarrierAndStatus();
-        } catch (err) {
-          console.error('Ошибка загрузки расписания:', err);
-          errorBox.style.display = 'block';
-          errorBox.textContent =
-            'Ошибка загрузки расписания: ' +
-            (err.message || err.toString()) +
-            '. Проверь сервер / интернет.';
-          intervals = [];
-          renderScheduleList();
-          updateBarrierAndStatus();
-        }
-      }
-
-      window.addEventListener('load', () => {
-        loadSchedule();
-        setInterval(loadSchedule, 5 * 60 * 1000);
-        setInterval(() => {
-          updateBarrierAndStatus();
-          renderScheduleList();
-        }, 1000);
+      scheduleListEl.scrollTo({
+        top: scheduleListEl.scrollTop + offset - 40,
+        behavior: 'smooth',
       });
-    })();
-  </script>
+
+      card.classList.add('train-card--highlight');
+      setTimeout(() => {
+        card.classList.remove('train-card--highlight');
+      }, 3000);
+    }
+
+    function renderScheduleList() {
+      if (!intervals.length) {
+        scheduleListEl.innerHTML =
+          '<div class="empty-state">Нет данных расписания. Проверь API-ключ и попробуй обновить ещё раз.</div>';
+        return;
+      }
+
+      const now = new Date();
+      const html = intervals
+        .map((int, idx) => {
+          const isPast = int.end < now;
+          const isNow = int.start <= now && now <= int.end;
+          const trackLabel = int.stops || '';
+          const statusChip = isNow
+            ? '<span class="chip red">Сейчас закрыто</span>'
+            : isPast
+            ? '<span class="chip">Прошёл</span>'
+            : '<span class="chip green">Ожидается</span>';
+
+          const distanceMs = int.start - now;
+          let eta = '';
+          if (!isPast && !isNow) {
+            eta = 'через ' + formatCountdown(distanceMs);
+          } else if (isNow) {
+            eta = 'идёт проход поезда';
+          } else {
+            eta = 'уже прошёл';
+          }
+
+          return `
+            <article class="train-card" data-idx="${idx}">
+              <div class="train-time">
+                <div class="train-time-main">${formatTime(int.arrival)}</div>
+                <div class="train-time-badge">прибытие</div>
+              </div>
+              <div class="train-info">
+                <div class="train-title">${int.title}</div>
+                <div class="train-sub">${trackLabel || 'Остановки: по маршруту'}</div>
+              </div>
+              <div class="train-meta">
+                ${statusChip}
+                <div>${int.number ? '№ ' + int.number : ''}</div>
+                <div class="train-eta" style="color:#9ca3af;">${eta}</div>
+              </div>
+            </article>
+          `;
+        })
+        .join('');
+
+      scheduleListEl.innerHTML = html;
+    }
+
+    // живая подгонка "через N мин/сек" под каждым поездом
+    function updateTrainCountdowns() {
+      if (!intervals.length) return;
+
+      const now = new Date();
+
+      intervals.forEach((int, idx) => {
+        const card = scheduleListEl.querySelector(
+          `.train-card[data-idx="${idx}"]`
+        );
+        if (!card) return;
+
+        const etaEl = card.querySelector('.train-eta');
+        if (!etaEl) return;
+
+        const isPast = int.end < now;
+        const isNow = int.start <= now && now <= int.end;
+
+        let eta = '';
+        if (!isPast && !isNow) {
+          const distanceMs = int.start - now;
+          eta = 'через ' + formatCountdown(distanceMs);
+        } else if (isNow) {
+          eta = 'идёт проход поезда';
+        } else {
+          eta = 'уже прошёл';
+        }
+
+        etaEl.textContent = eta;
+      });
+    }
+
+    async function loadSchedule() {
+      try {
+        errorBox.style.display = 'none';
+        errorBox.textContent = '';
+        scheduleListEl.innerHTML =
+          '<div class="empty-state">Загружаем расписание по станции «Удельная»…</div>';
+
+        const res = await fetch('/api/closures');
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error('HTTP ' + res.status + ': ' + text.slice(0, 200));
+        }
+
+        const data = await res.json();
+        intervals = (data.intervals || []).map((i) => ({
+          start: new Date(i.start),
+          end: new Date(i.end),
+          arrival: new Date(i.arrival),
+          title: i.title || 'Электропоезд',
+          number: i.number || '',
+          stops: i.stops || '',
+        }));
+
+        intervals.sort((a, b) => a.start - b.start);
+
+        renderScheduleList();
+        updateBarrierAndStatus();
+        updateTrainCountdowns();
+        updateBestWindows();
+
+      } catch (err) {
+        console.error('Ошибка загрузки расписания:', err);
+        errorBox.style.display = 'block';
+        errorBox.textContent =
+          'Ошибка загрузки расписания: ' +
+          (err.message || err.toString()) +
+          '. Проверь сервер / интернет.';
+        intervals = [];
+        renderScheduleList();
+        updateBarrierAndStatus();
+      }
+    }
+
+    window.addEventListener('load', () => {
+      // первая загрузка + автоскролл
+      loadSchedule().then(() => {
+        scrollToRelevantTrain();
+      });
+
+      // раз в 5 минут обновляем расписание
+      setInterval(loadSchedule, 5 * 60 * 1000);
+
+      // каждую секунду — статус шлагбаума и живые таймеры под поездами
+      setInterval(() => {
+        updateBarrierAndStatus();
+        updateTrainCountdowns();
+      }, 1000);
+
+      // раз в минуту подскролливаем к актуальному поезду
+      setInterval(() => {
+        scrollToRelevantTrain();
+        updateBestWindows();
+
+      }, 60000);
+    });
+  })();
+</script>
+
+
 </body>
 </html>
