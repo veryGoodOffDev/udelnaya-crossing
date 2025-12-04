@@ -3,8 +3,23 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Шлагбаум Удельная — живой режим</title>
+  <title>Шлагбаум Удельная</title>
+  <!-- Базовая фавиконка (старые браузеры) -->
+  <link rel="icon" href="/favicon.ico" sizes="any">
+
+  <!-- SVG-иконка (современные браузеры) -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+  <!-- PNG-иконка фиксированного размера -->
+  <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+
+  <!-- Apple Touch Icon (iOS на хоумскрин) -->
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#111827">
+
   <style>
     * {
       box-sizing: border-box;
@@ -663,7 +678,7 @@ function formatDurationShort(ms) {
         barrier.classList.remove('barrier-closed');
         barrierBase.classList.remove('closed');
         statusTextShort.textContent = 'Статус: открыто';
-        statusDetailed.textContent = 'Шлагбаум открыт';
+        statusDetailed.textContent = 'Переезд открыт';
         statusDetailed.classList.remove('danger');
         statusDetailed.classList.add('success');
 
