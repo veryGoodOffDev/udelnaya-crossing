@@ -238,11 +238,12 @@
       left: 50%;
       transform: translateX(-50%);
       top: 60%;
-      width: 20px;
-      height: 40px;
-      background: radial-gradient(circle at top, #6b7280 0, #111827 70%);
-      border-radius: 10px;
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.7);
+      width: 28px;
+      height: 48px;
+      background: linear-gradient(100deg, #111827 0, #64748b 48%, #1f2937 100%);
+      border: 1px solid rgba(148, 163, 184, 0.55);
+      border-radius: 7px 7px 10px 10px;
+      box-shadow: 0 10px 18px rgba(0, 0, 0, 0.65), inset 2px 0 3px rgba(255, 255, 255, 0.12);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -250,8 +251,8 @@
 
     .barrier-base::before {
       content: "";
-      width: 10px;
-      height: 10px;
+      width: 12px;
+      height: 12px;
       border-radius: 999px;
       background: radial-gradient(circle at 30% 30%, #22c55e 0, #14532d 60%);
       box-shadow: 0 0 12px rgba(34, 197, 94, 0.7);
@@ -266,12 +267,29 @@
       position: absolute;
       left: 50%;
       transform-origin: left center;
-      transform: translateX(-50%) rotate(-90deg);
-      top: 191px;
-      height: 16px;
+      transform: rotate(-88deg);
+      top: calc(60% + 11px);
+      height: 18px;
       width: 305px;
       pointer-events: none;
-      transition: transform 0.7s cubic-bezier(0.45, 0, 0.55, 1);
+      z-index: 2;
+      will-change: transform;
+      transition: transform 1.25s cubic-bezier(0.65, 0, 0.22, 1);
+    }
+
+    .barrier-arm-wrapper::before {
+      content: "";
+      position: absolute;
+      left: -8px;
+      top: 50%;
+      width: 22px;
+      height: 22px;
+      transform: translateY(-50%);
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 32%, #cbd5e1 0 16%, #475569 20% 55%, #0f172a 58%);
+      border: 2px solid #020617;
+      box-shadow: 0 3px 7px rgba(0, 0, 0, 0.65);
+      z-index: 2;
     }
 
     .barrier-arm {
@@ -286,16 +304,24 @@
         #ef4444 40px
       );
       box-shadow:
-        0 4px 8px rgba(0, 0, 0, 0.5),
-        0 0 18px rgba(248, 113, 113, 0.7);
+        0 5px 9px rgba(0, 0, 0, 0.55),
+        inset 0 2px 2px rgba(255, 255, 255, 0.65),
+        0 0 12px rgba(248, 113, 113, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.55);
     }
 
     .barrier-lights {
       position: absolute;
-      left: calc(50% + 80px);
-      top: 45%;
+      left: 50%;
+      transform: translateX(-50%);
+      top: calc(60% - 25px);
       display: flex;
-      gap: 6px;
+      gap: 5px;
+      padding: 4px 5px;
+      border-radius: 8px;
+      background: linear-gradient(#334155, #0f172a);
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.55);
     }
 
     .barrier-light {
@@ -309,7 +335,7 @@
     }
 
     .barrier-closed .barrier-arm-wrapper {
-      transform: translateX(-50%) rotate(0deg);
+      transform: rotate(0deg);
     }
 
     .barrier-closed .barrier-base {
@@ -318,21 +344,41 @@
 
     .barrier-closed .barrier-light {
       opacity: 1;
-      animation: blink 0.7s infinite alternate;
+      animation: signal-pulse 0.85s ease-in-out infinite alternate;
+    }
+
+    .barrier-closed .barrier-light:nth-child(2) {
+      animation-delay: -0.85s;
     }
 
     @media (max-width:440px) {
-         .barrier-arm-wrapper {
-      width: 200px;
-    }
+      .barrier-scene {
+        height: 320px;
+      }
+
+      .barrier-arm-wrapper {
+        width: 230px;
+      }
     }
 
-    @keyframes blink {
+    @media (prefers-reduced-motion: reduce) {
+      .barrier-arm-wrapper {
+        transition-duration: 0.01ms;
+      }
+
+      .barrier-closed .barrier-light {
+        animation: none;
+      }
+    }
+
+    @keyframes signal-pulse {
       0% {
-        opacity: 0.2;
+        opacity: 0.35;
+        box-shadow: 0 0 3px rgba(248, 113, 113, 0.25);
       }
       100% {
         opacity: 1;
+        box-shadow: 0 0 13px rgba(248, 113, 113, 0.95);
       }
     }
 
@@ -379,6 +425,11 @@
   transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
 
+.train-card--non-stop {
+  border-color: rgba(245, 158, 11, 0.55);
+  background: linear-gradient(105deg, rgba(120, 53, 15, 0.2), rgba(15, 23, 42, 0.92) 55%);
+}
+
 /* блоки внутри карточки */
 .train-time {
   grid-area: time;
@@ -423,6 +474,17 @@
 .train-sub {
   font-size: 11px;
   color: #9ca3af;
+}
+
+.train-kind {
+  display: inline-flex;
+  margin-top: 4px;
+  padding: 2px 6px;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 999px;
+  color: #fde68a;
+  background: rgba(180, 83, 9, 0.18);
+  font-size: 10px;
 }
 
 /* АДАПТИВ под мобильные */
@@ -526,7 +588,7 @@
           <span>Состояние переезда</span>
         </div>
         <div class="card-subtitle">
-          Рассчётное закрытие: от 2 мин до прибытия и до 3 мин после отправления.
+          Расчётное закрытие: обычно от 2 мин до прибытия и до 4 мин после.
         </div>
 
         <div class="status-block">
@@ -586,8 +648,8 @@
 
  <script>
   (function () {
-    const CLOSED_BEFORE_MIN = 3;
-    const CLOSED_AFTER_MIN = 2;
+    const CLOSED_BEFORE_MIN = 2;
+    const CLOSED_AFTER_MIN = 4;
 
     const barrier = document.getElementById('barrier');
     const barrierBase = document.getElementById('barrierBase');
@@ -602,12 +664,16 @@
     const bestWindowsEl = document.getElementById('bestWindows');
 
     let intervals = [];
+    const stationTimeFormatter = new Intl.DateTimeFormat('ru-RU', {
+      timeZone: 'Europe/Moscow',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
 
     function formatTime(d) {
       if (!(d instanceof Date) || isNaN(d)) return '—';
-      const hh = String(d.getHours()).padStart(2, '0');
-      const mm = String(d.getMinutes()).padStart(2, '0');
-      return `${hh}:${mm}`;
+      return stationTimeFormatter.format(d);
     }
 
 function formatCountdown(ms) {
@@ -720,16 +786,19 @@ function formatDurationShort(ms) {
         const msLeft = current.end - now;
         nextClosureCountdown.textContent =
           'Откроется через ' + formatCountdown(msLeft);
-        nextClosureTime.textContent =
-          'Ожидаемое открытие ≈ ' +
-          formatTime(current.end) +
-          ' (поезд ' +
-          (current.number || '—') +
-          ')';
-        statusHint.textContent =
-          'По данным расписания, поезд прибыл в ' +
-          formatTime(current.arrival) +
-          `. Модель интервала: −${CLOSED_BEFORE_MIN} / +${CLOSED_AFTER_MIN} мин.`;
+        nextClosureTime.textContent = current.manual
+          ? `Ожидаемое открытие ≈ ${formatTime(current.end)} (${current.title})`
+          : 'Ожидаемое открытие ≈ ' +
+            formatTime(current.end) +
+            ' (поезд ' +
+            (current.number || '—') +
+            ')';
+        statusHint.textContent = current.manual
+          ? `${current.title} проходит без остановки около ${formatTime(current.arrival)}. ` +
+            `Интервал закрытия: ${formatTime(current.start)}–${formatTime(current.end)}.`
+          : 'По данным расписания, поезд прибыл в ' +
+            formatTime(current.arrival) +
+            `. Модель интервала: −${CLOSED_BEFORE_MIN} / +${CLOSED_AFTER_MIN} мин.`;
       } else if (next) {
         barrier.classList.remove('barrier-closed');
         barrierBase.classList.remove('closed');
@@ -741,16 +810,20 @@ function formatDurationShort(ms) {
         const msLeft = next.start - now;
         nextClosureCountdown.textContent =
           'Закроется через ' + formatCountdown(msLeft);
-        nextClosureTime.textContent =
-          'Ожидаемое закрытие ≈ ' +
-          formatTime(next.start) +
-          ', прибытие поезда ' +
-          (next.number || '—') +
-          ' в ' +
-          formatTime(next.arrival);
-        statusHint.textContent =
-          `Интервал закрытия оценочный: ${CLOSED_BEFORE_MIN} мин до прибытия и ` +
-          `${CLOSED_AFTER_MIN} мин после.`;
+        nextClosureTime.textContent = next.manual
+          ? `Ожидаемое закрытие ≈ ${formatTime(next.start)}, ` +
+            `${next.title} пройдёт около ${formatTime(next.arrival)}`
+          : 'Ожидаемое закрытие ≈ ' +
+            formatTime(next.start) +
+            ', прибытие поезда ' +
+            (next.number || '—') +
+            ' в ' +
+            formatTime(next.arrival);
+        statusHint.textContent = next.manual
+          ? `${next.title} пройдёт станцию без остановки; закрытие ожидается ` +
+            `с ${formatTime(next.start)} до ${formatTime(next.end)}.`
+          : `Интервал закрытия оценочный: ${CLOSED_BEFORE_MIN} мин до прибытия и ` +
+            `${CLOSED_AFTER_MIN} мин после.`;
       }
     }
     function updateBestWindows() {
@@ -891,7 +964,7 @@ function formatDurationShort(ms) {
         .map((int, idx) => {
           const isPast = int.end < now;
           const isNow = int.start <= now && now <= int.end;
-          const trackLabel = int.stops || '';
+          const trackLabel = int.subtitle || int.stops || '';
           const statusChip = isNow
             ? '<span class="chip red">Сейчас закрыто</span>'
             : isPast
@@ -909,14 +982,15 @@ function formatDurationShort(ms) {
           }
 
           return `
-            <article class="train-card" data-idx="${idx}">
+            <article class="train-card${int.nonStop ? ' train-card--non-stop' : ''}" data-idx="${idx}">
               <div class="train-time">
                 <div class="train-time-main">${formatTime(int.arrival)}</div>
-                <div class="train-time-badge">прибытие</div>
+                <div class="train-time-badge">${int.nonStop ? 'время прохода' : 'прибытие'}</div>
               </div>
               <div class="train-info">
                 <div class="train-title">${int.title}</div>
                 <div class="train-sub">${trackLabel || 'Остановки: по маршруту'}</div>
+                ${int.nonStop ? '<span class="train-kind">Без остановки · скоростной</span>' : ''}
               </div>
               <div class="train-meta">
                 ${statusChip}
@@ -984,6 +1058,10 @@ function formatDurationShort(ms) {
           title: i.title || 'Электропоезд',
           number: i.number || '',
           stops: i.stops || '',
+          subtitle: i.subtitle || '',
+          manual: Boolean(i.manual),
+          nonStop: Boolean(i.nonStop),
+          trainType: i.trainType || '',
         }));
 
         intervals.sort((a, b) => a.start - b.start);

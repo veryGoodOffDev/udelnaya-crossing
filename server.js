@@ -2,6 +2,12 @@ require('dotenv').config();
 const express = require('express');
 const fetch = require('node-fetch');
 const path = require('path');
+const {
+  RESULT_TZ,
+  createManualIntervals,
+  mergeIntervals,
+  zonedIsoDate,
+} = require('./schedule');
 
 const app = express();
 
@@ -10,8 +16,6 @@ const API_KEY = process.env.YANDEX_RASP_API_KEY;
 
 // Удельная, код Яндекс.Расписаний
 const STATION_CODE = 's9603463';
-const RESULT_TZ = 'Europe/Moscow';
-
 // Модель: на сколько минут до/после прибытия считаем шлагбаум закрытым
 const CLOSED_BEFORE_MIN = 2;
 const CLOSED_AFTER_MIN = 4;
@@ -21,11 +25,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Хелпер: сегодняшняя дата (YYYY-MM-DD)
 function todayIsoDate() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  return zonedIsoDate(new Date(), RESULT_TZ);
 }
 
 // ====== КЭШ ДЛЯ /api/closures ======
@@ -63,7 +63,7 @@ async function fetchClosuresFromYandex(dateStr) {
   const data = await resp.json();
   const schedule = Array.isArray(data.schedule) ? data.schedule : [];
 
-  const intervals = schedule
+  const apiIntervals = schedule
     .filter(item => item.arrival && item.thread)
     .map(item => {
       const arrival = new Date(item.arrival);
@@ -82,8 +82,9 @@ async function fetchClosuresFromYandex(dateStr) {
         days: item.days || ''
       };
     })
-    .filter(Boolean)
-    .sort((a, b) => new Date(a.start) - new Date(b.start));
+    .filter(Boolean);
+
+  const intervals = mergeIntervals(apiIntervals, createManualIntervals(dateStr));
 
   return {
     intervals,
@@ -91,7 +92,8 @@ async function fetchClosuresFromYandex(dateStr) {
       station: STATION_CODE,
       date: dateStr,
       closedBeforeMin: CLOSED_BEFORE_MIN,
-      closedAfterMin: CLOSED_AFTER_MIN
+      closedAfterMin: CLOSED_AFTER_MIN,
+      manualEventsIncluded: true,
     }
   };
 }
