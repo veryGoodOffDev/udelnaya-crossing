@@ -1,21 +1,5 @@
 const RESULT_TZ = 'Europe/Moscow';
 
-// Ручные события для поездов, которые проходят Удельную без остановки
-// и поэтому отсутствуют в станционном API Яндекс.Расписаний.
-const MANUAL_TRAIN_EVENTS = Object.freeze([
-  Object.freeze({
-    id: 'lastochka-1930',
-    title: 'Ласточка',
-    subtitle: 'Скоростной, проходящий поезд',
-    passTime: '19:30',
-    closureStart: '19:29',
-    closureEnd: '19:34',
-    trainType: 'high_speed',
-    nonStop: true,
-    manual: true,
-  }),
-]);
-
 function zonedIsoDate(date = new Date(), timeZone = RESULT_TZ) {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone,
@@ -31,21 +15,41 @@ function moscowDateTime(dateStr, time) {
   return new Date(`${dateStr}T${time}:00+03:00`).toISOString();
 }
 
-function createManualIntervals(dateStr) {
-  return MANUAL_TRAIN_EVENTS.map((event) => ({
-    id: `manual:${event.id}:${dateStr}`,
-    start: moscowDateTime(dateStr, event.closureStart),
-    end: moscowDateTime(dateStr, event.closureEnd),
-    arrival: moscowDateTime(dateStr, event.passTime),
-    title: event.title,
-    subtitle: event.subtitle,
-    number: '',
-    stops: '',
-    days: '',
-    trainType: event.trainType,
-    nonStop: event.nonStop,
-    manual: event.manual,
-  }));
+function moscowWeekday(dateStr) {
+  const date = new Date(`${dateStr}T12:00:00+03:00`);
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: RESULT_TZ,
+    weekday: 'short',
+  }).format(date);
+  return { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 }[weekday];
+}
+
+function runsOnDate(event, dateStr) {
+  if (event.active === false) return false;
+  const days = Array.isArray(event.daysOfWeek) && event.daysOfWeek.length
+    ? event.daysOfWeek
+    : [1, 2, 3, 4, 5, 6, 7];
+  return days.includes(moscowWeekday(dateStr));
+}
+
+function createManualIntervals(dateStr, events = []) {
+  return events
+    .filter((event) => runsOnDate(event, dateStr))
+    .map((event) => ({
+      id: `manual:${event.id}:${dateStr}`,
+      start: moscowDateTime(dateStr, event.closureStart),
+      end: moscowDateTime(dateStr, event.closureEnd),
+      arrival: moscowDateTime(dateStr, event.passTime),
+      title: event.title,
+      subtitle: event.subtitle || '',
+      number: '',
+      stops: '',
+      days: '',
+      direction: event.direction || 'unspecified',
+      trainType: event.trainType || 'other',
+      nonStop: event.nonStop !== false,
+      manual: true,
+    }));
 }
 
 function mergeIntervals(apiIntervals, manualIntervals) {
@@ -66,9 +70,10 @@ function mergeIntervals(apiIntervals, manualIntervals) {
 }
 
 module.exports = {
-  MANUAL_TRAIN_EVENTS,
   RESULT_TZ,
   createManualIntervals,
   mergeIntervals,
   zonedIsoDate,
+  moscowWeekday,
+  runsOnDate,
 };
