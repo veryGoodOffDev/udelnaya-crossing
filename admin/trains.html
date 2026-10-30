@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Ручные поезда</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#020617;color:#e5e7eb;font-family:system-ui,sans-serif;padding:20px}.wrap{max-width:980px;margin:auto}
+    header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}h1{font-size:24px;margin:0}.muted{color:#94a3b8;font-size:13px}
+    button{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}.primary{background:#2563eb;color:#fff}.secondary{background:#1e293b;color:#e2e8f0}.danger{background:#7f1d1d;color:#fecaca}
+    .grid{display:grid;gap:12px}.card{background:#0f172a;border:1px solid #334155;border-radius:14px;padding:14px}.top{display:flex;justify-content:space-between;gap:10px}.title{font-weight:800}.badge{font-size:11px;padding:3px 8px;border-radius:999px;background:#14532d;color:#bbf7d0}.badge.off{background:#3f3f46;color:#d4d4d8}
+    .meta{margin-top:8px;color:#cbd5e1;font-size:13px;display:grid;gap:4px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    dialog{border:1px solid #334155;border-radius:16px;background:#0f172a;color:#fff;width:min(620px,calc(100% - 28px));padding:0}dialog::backdrop{background:#0009}.form{padding:18px}.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.full{grid-column:1/-1}label{font-size:12px;color:#cbd5e1;display:grid;gap:5px}input,select,textarea{width:100%;padding:10px;border-radius:9px;border:1px solid #475569;background:#020617;color:#fff}.days{display:flex;flex-wrap:wrap;gap:8px}.days label{display:flex;align-items:center;gap:4px}.days input{width:auto}.form-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.error{color:#fecaca;font-size:13px;margin-top:8px}
+    @media(max-width:620px){.fields{grid-template-columns:1fr}.full{grid-column:auto}header{align-items:flex-start;flex-direction:column}.actions button{flex:1}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><h1>Ручные поезда</h1><div class="muted">Проходящие составы, которых нет в API станции Удельная.</div></div>
+    <div><button class="secondary" id="logoutBtn">Выйти</button> <button class="primary" id="addBtn">+ Добавить поезд</button></div>
+  </header>
+  <div id="list" class="grid"></div>
+</div>
+
+<dialog id="editor">
+  <form class="form" id="trainForm">
+    <h2 id="formTitle">Добавить поезд</h2>
+    <input type="hidden" id="trainId">
+    <div class="fields">
+      <label>Название<input id="title" required maxlength="80"></label>
+      <label>Описание<input id="subtitle" maxlength="140"></label>
+      <label>Время прохода<input id="passTime" type="time" required></label>
+      <label>Начало закрытия<input id="closureStart" type="time" required></label>
+      <label>Конец закрытия<input id="closureEnd" type="time" required></label>
+      <label>Направление<select id="direction"><option value="unspecified">Не указано</option><option value="from_spb">Из Санкт-Петербурга</option><option value="to_spb">В Санкт-Петербург</option></select></label>
+      <label>Тип<select id="trainType"><option value="regular">Обычный</option><option value="express">Скорый</option><option value="high_speed">Скоростной</option><option value="lastochka">Ласточка</option><option value="other">Другой</option></select></label>
+      <label><span>Без остановки</span><input id="nonStop" type="checkbox" checked></label>
+      <label><span>Активен</span><input id="active" type="checkbox" checked></label>
+      <div class="full"><div class="muted" style="margin-bottom:6px">Дни недели</div><div class="days" id="days"></div></div>
+    </div>
+    <div id="formError" class="error"></div>
+    <div class="form-actions"><button type="button" class="secondary" id="cancelBtn">Отмена</button><button type="submit" class="primary">Сохранить</button></div>
+  </form>
+</dialog>
+
+<script>
+const dayNames=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+const list=document.getElementById('list');
+const editor=document.getElementById('editor');
+const days=document.getElementById('days');
+dayNames.forEach((name,i)=>{const label=document.createElement('label');label.innerHTML='<input type="checkbox" value="'+(i+1)+'" checked> '+name;days.appendChild(label);});
+
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function dir(v){return ({from_spb:'Из Санкт-Петербурга',to_spb:'В Санкт-Петербург',unspecified:'Не указано'})[v]||'Не указано';}
+function type(v){return ({regular:'Обычный',express:'Скорый',high_speed:'Скоростной',lastochka:'Ласточка',other:'Другой'})[v]||'Другой';}
+function dayText(arr){return (arr||[]).length===7?'Ежедневно':(arr||[]).map(d=>dayNames[d-1]).join(', ');}
+
+async function api(url, options={}){
+  const res=await fetch(url,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});
+  if(res.status===401){location.href='/admin/login';throw new Error('Сессия истекла');}
+  if(res.status===204)return null;
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok)throw new Error(data.error||'Ошибка запроса');
+  return data;
+}
+
+async function load(){
+  const data=await api('/api/admin/manual-trains');
+  list.innerHTML=(data.items||[]).map(item=>`
+    <div class="card">
+      <div class="top"><div><div class="title">${esc(item.title)}</div><div class="muted">${esc(item.subtitle||'')}</div></div><span class="badge ${item.active?'':'off'}">${item.active?'Активен':'Отключён'}</span></div>
+      <div class="meta">
+        <div>Проход: <b>${esc(item.passTime)}</b> · Закрытие: <b>${esc(item.closureStart)}–${esc(item.closureEnd)}</b></div>
+        <div>Тип: ${esc(type(item.trainType))} · Направление: ${esc(dir(item.direction))}</div>
+        <div>Дни: ${esc(dayText(item.daysOfWeek))} ${item.nonStop?'· Без остановки':''}</div>
+      </div>
+      <div class="actions">
+        <button class="secondary" onclick='editTrain(${JSON.stringify(item)})'>Редактировать</button>
+        <button class="secondary" onclick='toggleTrain(${JSON.stringify(item)})'>${item.active?'Отключить':'Включить'}</button>
+        <button class="danger" onclick='deleteTrain(${JSON.stringify(item.id)},${JSON.stringify(item.title)})'>Удалить</button>
+      </div>
+    </div>`).join('') || '<div class="muted">Ручных поездов пока нет.</div>';
+}
+
+function openForm(item=null){
+  document.getElementById('formTitle').textContent=item?'Редактировать поезд':'Добавить поезд';
+  document.getElementById('trainId').value=item?.id||'';
+  for(const id of ['title','subtitle','passTime','closureStart','closureEnd'])document.getElementById(id).value=item?.[id]||'';
+  document.getElementById('direction').value=item?.direction||'unspecified';
+  document.getElementById('trainType').value=item?.trainType||'other';
+  document.getElementById('nonStop').checked=item?item.nonStop!==false:true;
+  document.getElementById('active').checked=item?item.active!==false:true;
+  const selected=new Set(item?.daysOfWeek||[1,2,3,4,5,6,7]);
+  days.querySelectorAll('input').forEach(cb=>cb.checked=selected.has(Number(cb.value)));
+  document.getElementById('formError').textContent='';
+  editor.showModal();
+}
+window.editTrain=(item)=>openForm(item);
+window.toggleTrain=async(item)=>{await api('/api/admin/manual-trains/'+encodeURIComponent(item.id),{method:'PATCH',body:JSON.stringify({active:!item.active})});await load();};
+window.deleteTrain=async(id,title)=>{if(!confirm('Удалить поезд «'+title+'»?'))return;await api('/api/admin/manual-trains/'+encodeURIComponent(id),{method:'DELETE'});await load();};
+
+document.getElementById('addBtn').onclick=()=>openForm();
+document.getElementById('cancelBtn').onclick=()=>editor.close();
+document.getElementById('logoutBtn').onclick=async()=>{await api('/api/admin/logout',{method:'POST'});location.href='/';};
+document.getElementById('trainForm').addEventListener('submit',async(e)=>{
+  e.preventDefault();
+  const id=document.getElementById('trainId').value;
+  const payload={
+    title:document.getElementById('title').value,
+    subtitle:document.getElementById('subtitle').value,
+    passTime:document.getElementById('passTime').value,
+    closureStart:document.getElementById('closureStart').value,
+    closureEnd:document.getElementById('closureEnd').value,
+    direction:document.getElementById('direction').value,
+    trainType:document.getElementById('trainType').value,
+    nonStop:document.getElementById('nonStop').checked,
+    active:document.getElementById('active').checked,
+    daysOfWeek:[...days.querySelectorAll('input:checked')].map(x=>Number(x.value)),
+  };
+  try{
+    await api(id?'/api/admin/manual-trains/'+encodeURIComponent(id):'/api/admin/manual-trains',{method:id?'PATCH':'POST',body:JSON.stringify(payload)});
+    editor.close();await load();
+  }catch(err){document.getElementById('formError').textContent=err.message;}
+});
+load().catch(err=>list.innerHTML='<div class="error">'+esc(err.message)+'</div>');
+</script>
+</body>
+</html>
